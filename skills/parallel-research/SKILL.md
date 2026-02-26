@@ -1,4 +1,6 @@
 ---
+name: parallel-research
+description: Decompose a research question into MECE domains and run parallel Claude agents via tmux
 disable-model-invocation: true
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 argument-hint: "[research topic or question]"

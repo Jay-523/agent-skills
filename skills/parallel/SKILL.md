@@ -1,4 +1,6 @@
 ---
+name: parallel
+description: Split implementation tasks into independent workstreams running as parallel agents in git worktrees
 disable-model-invocation: true
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 argument-hint: "[task description or 'plan' to use current plan]"

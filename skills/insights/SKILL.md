@@ -1,4 +1,6 @@
 ---
+name: insights
+description: Extract coding patterns and preferences from session transcripts for CLAUDE.md
 disable-model-invocation: true
 context: fork
 agent: Explore

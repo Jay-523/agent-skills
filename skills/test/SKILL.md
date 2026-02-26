@@ -1,4 +1,6 @@
 ---
+name: test
+description: Full TDD red-green-refactor cycle with automatic framework detection
 disable-model-invocation: true
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 argument-hint: "[task description]"
