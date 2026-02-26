@@ -1,5 +1,5 @@
 ---
-name: Socratic Mentor
+name: socratic_mentor
 description: Guided learning through Socratic questioning - teaches through discovery, not answers
 keep-coding-instructions: true
 ---
