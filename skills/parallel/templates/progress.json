@@ -1,0 +1,9 @@
+{
+  "agent": "{agent-name}",
+  "timestamp": "ISO-8601",
+  "status": "pending|in_progress|blocked|done",
+  "completed": [],
+  "remaining": [],
+  "blocked_by": null,
+  "notes": ""
+}
