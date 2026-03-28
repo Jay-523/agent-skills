@@ -248,29 +248,36 @@ Prompt design rules:
 - **Structured output format** for aggregation
 - **Variance between a/b agents** -- different terms for same domain
 
-#### 3b. Build tmux session and launch
+#### 3b. Build tmux windows and launch
 
-Calculate layout: ceil(total_agents / 4) windows, up to 4 panes each.
+Open new windows inside the **current tmux session** -- do NOT create a
+new session. Name each window `deep_research_{domain}` using a short
+slug derived from the domain column in the decomposition table
+(e.g. `deep_research_frameworks`, `deep_research_security`).
 
-Create the session:
+Determine the current session:
 
 ```bash
-SESSION="deep-research"
-tmux has-session -t $SESSION 2>/dev/null && SESSION="deep-research-$(date +%s)"
-tmux new-session -d -s $SESSION -x 220 -y 55
+SESSION=$(tmux display-message -p '#S')
 ```
 
-For each window of 4 panes:
+Calculate layout: ceil(total_agents / 4) windows, up to 4 panes each.
+Group agents by domain -- one window per domain where possible.
+
+For each window:
 
 ```bash
-# Additional panes (first pane exists by default)
-tmux split-window -t $SESSION:{window}
-tmux split-window -t $SESSION:{window}
-tmux split-window -t $SESSION:{window}
-tmux select-layout -t $SESSION:{window} tiled
+# Create a named window in the current session
+tmux new-window -t $SESSION -n deep_research_{domain}
+
+# Split into up to 4 panes (first pane exists by default)
+tmux split-window -t $SESSION:deep_research_{domain}
+tmux split-window -t $SESSION:deep_research_{domain}
+tmux split-window -t $SESSION:deep_research_{domain}
+tmux select-layout -t $SESSION:deep_research_{domain} tiled
 
 # VALIDATE before launching
-tmux list-panes -t $SESSION:{window} -F "#{pane_index}"
+tmux list-panes -t $SESSION:deep_research_{domain} -F "#{pane_index}"
 ```
 
 CRITICAL: **Always validate pane count** before sending commands.
@@ -278,9 +285,9 @@ CRITICAL: **Always validate pane count** before sending commands.
 Launch each agent:
 
 ```bash
-tmux send-keys -t $SESSION:{window}.{pane} -l -- "cat output/{node_id}/prompt.md | /opt/homebrew/bin/codex exec -m {model}{reasoning_flag} --full-auto - 2>&1 | tee output/{node_id}/output.md ; echo '=== RESEARCH AGENT COMPLETE ==='"
+tmux send-keys -t $SESSION:deep_research_{domain}.{pane} -l -- "cat output/{node_id}/prompt.md | /opt/homebrew/bin/codex exec -m {model}{reasoning_flag} --full-auto - 2>&1 | tee output/{node_id}/output.md ; echo '=== RESEARCH AGENT COMPLETE ==='"
 sleep 0.2
-tmux send-keys -t $SESSION:{window}.{pane} Enter
+tmux send-keys -t $SESSION:deep_research_{domain}.{pane} Enter
 ```
 
 After launching, verify processes:
@@ -290,10 +297,10 @@ ps aux | grep "codex exec" | grep -v grep | wc -l
 
 Print monitoring instructions:
 ```
-Attach: tmux attach -t $SESSION
 Switch windows: Ctrl-b n / Ctrl-b p
 Switch panes: Ctrl-b + arrows
 Zoom pane: Ctrl-b z
+List research windows: tmux list-windows -t $SESSION | grep deep_research
 ```
 
 ### Phase 4 -- Monitor + Collect
@@ -367,7 +374,7 @@ Consider:
 - Did findings raise important new questions?
 - Has the user requested specific deeper investigation?
 
-If deeper research IS needed (and current level < max depth of 2):
+If deeper research IS needed (and current level < max depth, between 2-5 as appropriate):
 1. Generate new sub-questions targeting gaps/contradictions
 2. Assign node IDs: `L{N+1}_{domain}_{variant}`
 3. Present the new agents table for user approval
@@ -438,21 +445,21 @@ graph TD
 
 **Agent stuck / no output after 5+ minutes:**
 ```bash
-tmux capture-pane -t deep-research:{w}.{p} -p -S -20
+tmux capture-pane -t $SESSION:deep_research_{domain}.{p} -p -S -20
 ```
 Look for errors. Common: codex rate limit, model not supported, network issues.
 
 **tee output truncated (known codex issue):**
 ```bash
-tmux capture-pane -t deep-research:{w}.{p} -p -S - > output/{node_id}/scrollback.txt
+tmux capture-pane -t $SESSION:deep_research_{domain}.{p} -p -S - > output/{node_id}/scrollback.txt
 ```
 Use scrollback as the authoritative output.
 
 **Re-run a single failed agent:**
 ```bash
-tmux send-keys -t deep-research:{w}.{p} -l -- "cat output/{node_id}/prompt.md | /opt/homebrew/bin/codex exec -m {model}{reasoning_flag} --full-auto - 2>&1 | tee output/{node_id}/output.md ; echo '=== RESEARCH AGENT COMPLETE ==='"
+tmux send-keys -t $SESSION:deep_research_{domain}.{p} -l -- "cat output/{node_id}/prompt.md | /opt/homebrew/bin/codex exec -m {model}{reasoning_flag} --full-auto - 2>&1 | tee output/{node_id}/output.md ; echo '=== RESEARCH AGENT COMPLETE ==='"
 sleep 0.2
-tmux send-keys -t deep-research:{w}.{p} Enter
+tmux send-keys -t $SESSION:deep_research_{domain}.{p} Enter
 ```
 
 **All agents rate-limited:**
@@ -465,7 +472,7 @@ Stagger launches with `sleep 30` between `send-keys`, or reduce parallel count.
 - Always wait for user approval of decomposition before launching agents.
 - Always validate tmux panes exist before sending commands.
 - Always capture scrollback as backup after agent completion.
-- Default max depth: 2 levels. User can override with "go deeper" or "enough".
-- The tmux session name is `deep-research`. Check for existing sessions first.
+- Max depth: 2-5 levels as appropriate for the topic's complexity. User can override with "go deeper" or "enough".
+- Use the current tmux session. Name windows `deep_research_{domain}` to avoid collisions.
 - Default Codex model: `gpt-5.4`. Default reasoning effort: `medium`. Always confirm with user in Phase 2b.
 - Discover available models dynamically (codex --help or web search) -- do not rely on a hardcoded list.
