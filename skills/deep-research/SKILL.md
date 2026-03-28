@@ -78,7 +78,93 @@ Present the decomposition table and wait for user approval:
 | 5 | L0_security_b     | Security   | Compliance & legal     |
 ```
 
+After the table, generate an ASCII DAG diagram using the actual node IDs
+to show the planned research structure. The diagram must show which nodes
+run in parallel (Level 0) and the sequential synthesis/extension flow:
+
+```
+Research Question: "{topic}"
+        |
+   [MECE Decompose]
+        |
+  +-----+-----+-----+-----+
+  v     v     v     v     v
+[L0_a] [L0_b] [L0_c] [L0_d] [L0_e]   Level 0 (parallel)
+  +-----+-----+-----+-----+
+              |
+        [Synthesis L0]
+              |
+         +----+----+
+         v         v
+      [L1_a]    [L1_b]                 Level 1 (after gaps found)
+         +----+----+
+              |
+        [Synthesis L1]
+              |
+         [Final Report]
+```
+
+Replace the placeholders with the actual node IDs from the decomposition
+table. L1 nodes are speculative at this stage -- label them as
+"(spawned after L0 synthesis if gaps found)".
+
+Present both the table and the DAG together. Ask: "This the right DAG?"
+
 Do NOT proceed until the user approves this decomposition.
+
+### Phase 2b -- Configure Codex Agents
+
+Before launching agents, discover available models and let the user choose
+the model and reasoning effort level.
+
+**Step 1: Discover available models.**
+
+Run:
+```bash
+codex --help
+```
+
+Check if there is a model listing command or flag. If not, fetch the
+current model list from the OpenAI Codex models page via web search:
+https://developers.openai.com/codex/models
+
+Present the discovered models in a table with a recommended default:
+
+```
+| Model              | Notes                                     |
+|--------------------|-------------------------------------------|
+| gpt-5.4            | Flagship, recommended default             |
+| gpt-5.4-mini       | Faster, lower cost                        |
+| gpt-5.3-codex      | Strong for complex tasks                  |
+| ...                | (other models discovered at runtime)      |
+```
+
+**Step 2: Present reasoning effort levels.**
+
+| Level     | Use case                                        |
+|-----------|------------------------------------------------ |
+| `minimal` | Fastest, least thorough                         |
+| `low`     | Quick scans                                     |
+| `medium`  | Balanced speed and quality (recommended default)|
+| `high`    | Thorough research                               |
+| `xhigh`   | Maximum depth, slowest                          |
+
+**Step 3: Confirm with user.**
+
+```
+Model: gpt-5.4
+Reasoning effort: medium
+
+Accept defaults? Or specify model and/or reasoning effort.
+```
+
+Record the chosen values. These are referenced as `{model}` and
+`{reasoning_flag}` in all codex exec commands below.
+
+- If reasoning effort is set: `{reasoning_flag}` = ` -c model_reasoning_effort={effort}`
+- If the user declines reasoning config: `{reasoning_flag}` = `` (empty)
+
+Do NOT proceed until the user confirms model and reasoning effort.
 
 ### Phase 3 -- Create Prompts + Launch Codex Agents
 
@@ -192,7 +278,7 @@ CRITICAL: **Always validate pane count** before sending commands.
 Launch each agent:
 
 ```bash
-tmux send-keys -t $SESSION:{window}.{pane} -l -- "cat output/{node_id}/prompt.md | /opt/homebrew/bin/codex exec -m gpt-5.4 --full-auto - 2>&1 | tee output/{node_id}/output.md ; echo '=== RESEARCH AGENT COMPLETE ==='"
+tmux send-keys -t $SESSION:{window}.{pane} -l -- "cat output/{node_id}/prompt.md | /opt/homebrew/bin/codex exec -m {model}{reasoning_flag} --full-auto - 2>&1 | tee output/{node_id}/output.md ; echo '=== RESEARCH AGENT COMPLETE ==='"
 sleep 0.2
 tmux send-keys -t $SESSION:{window}.{pane} Enter
 ```
@@ -364,7 +450,7 @@ Use scrollback as the authoritative output.
 
 **Re-run a single failed agent:**
 ```bash
-tmux send-keys -t deep-research:{w}.{p} -l -- "cat output/{node_id}/prompt.md | /opt/homebrew/bin/codex exec -m gpt-5.4 --full-auto - 2>&1 | tee output/{node_id}/output.md ; echo '=== RESEARCH AGENT COMPLETE ==='"
+tmux send-keys -t deep-research:{w}.{p} -l -- "cat output/{node_id}/prompt.md | /opt/homebrew/bin/codex exec -m {model}{reasoning_flag} --full-auto - 2>&1 | tee output/{node_id}/output.md ; echo '=== RESEARCH AGENT COMPLETE ==='"
 sleep 0.2
 tmux send-keys -t deep-research:{w}.{p} Enter
 ```
@@ -381,3 +467,5 @@ Stagger launches with `sleep 30` between `send-keys`, or reduce parallel count.
 - Always capture scrollback as backup after agent completion.
 - Default max depth: 2 levels. User can override with "go deeper" or "enough".
 - The tmux session name is `deep-research`. Check for existing sessions first.
+- Default Codex model: `gpt-5.4`. Default reasoning effort: `medium`. Always confirm with user in Phase 2b.
+- Discover available models dynamically (codex --help or web search) -- do not rely on a hardcoded list.
