@@ -6,6 +6,13 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 argument-hint: "[research topic or question]"
 ---
 
+# DEPRECATED -- Use `/deep-research` instead
+#
+# This skill uses `claude -p` for parallel research agents, which resulted
+# in an account ban. The replacement `/deep-research` skill uses Codex
+# (codex exec --full-auto) for web research and Claude as in-context
+# orchestrator -- zero ban risk.
+
 # /parallel-research -- Parallel Web Research via tmux + claude -p
 
 Decompose a research question into MECE domains, spawn parallel Claude
